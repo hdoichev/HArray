@@ -9,15 +9,23 @@ import Foundation
 /// Array intended for usage where fast insertion and removal of items in the middle of the array is of importance.
 ///
 ///
-public class HArray<DataAllocator: StorableAllocator>: Codable
+public class HArray<DataAllocator: StorableAllocator>: Codable, MutableCollection
 where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, DataAllocator.Storage.Index == Int {
+    public var startIndex: Int { return 0 }
+    
+    public var endIndex: Int { return _count }
+    
+    public typealias Element = DataAllocator.Storage.Element
+    public typealias Index = Int
+    public func index(after i: Int) -> Int { return i + 1 }
+    
     public typealias Node = HNode<DataAllocator>
     public enum TraverseStyle {
         case InOrder
         case PreOrder
         case PostOrder
     }
-    var root: Node?
+    var _root: Node?
     let _maxElementsPerNode: Int
     var _count: Int = 0
     var _allocator: DataAllocator?
@@ -31,14 +39,14 @@ where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, D
     ///  set after this init return.
     public required init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
-        root = try values.decode(Node.self, forKey: .root)
+        _root = try values.decode(Node.self, forKey: .root)
         _maxElementsPerNode = try values.decode(Int.self, forKey: .maxElementsPerNode)
         _count = try values.decode(Int.self, forKey: .count)
         _allocator = nil
     }
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(root, forKey: .root)
+        try container.encode(_root, forKey: .root)
         try container.encode(_maxElementsPerNode, forKey: .maxElementsPerNode)
         try container.encode(_count, forKey: .count)
     }
@@ -51,7 +59,7 @@ where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, D
     ///
     public init(maxElementsPerNode: Int = 32, allocator: DataAllocator) {
         _allocator = allocator
-        root = nil
+        _root = nil
         _maxElementsPerNode = maxElementsPerNode
     }
     ///
@@ -86,92 +94,15 @@ where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, D
         }
     }
     ///
-    ///
-    ///
-    public func getData(at position: Int) -> DataAllocator.Storage.Element? {
-        guard let root = root else { return nil }
-        let r = _findNode(for: position, starting: root, runningSum: 0)
-        guard r.1 else { return nil }
-        guard (r.2.startIndex..<r.2.endIndex).contains(position) else { return nil /*TODO: This should throw...dohhhh */}
-        guard let node = r.0 else { return nil }
-        return node._data[position - r.2.startIndex]
-    }
-    ///
-    ///
-    ///
     public func findNode(for position: Int) -> Node? {
-        guard let root = root else { return nil }
+        guard let root = _root else { return nil }
         return _findNode(for: position, starting: root, runningSum: 0).0
     }
-    ///
-    ///        6 (6)                   3 (3)
-    ///     /     \                 /     \
-    ///  3 (-3)    8 (2) --->              6 (3)
-    ///     \                            /   \
-    ///     4 (1)                    4 (-2)   8 (2)
-    ///
-    private func rotateRight(_ node: Node) -> Node? {
-        guard let left = node.left else { return node }
-        let lright = left.right
-        let left_key = node._key + left._key
-        let node_key = (-left._key) - left._data.count // this should be positive - always
-        if let lr = lright {
-            lr._key = -(node_key - lr._key)
-            if lr._key >= 0 {
-                // TODO: Throw or fatalError
-                fatalError("Tree key is corrupted")
-            }
-        }
-        left._key = left_key
-        node._key = node_key// + node._data.count
-        if node._key < 0 {
-            // TODO: Throw or fatalError
-            fatalError("Tree key is corrupted")
-        }
-        
-        node.left = lright
-        left.right = node
-        return left
-    }
-    ///
-    ///        6 (6)                   11 (11)
-    ///     /     \                 /     \
-    ///  3 (-3)   11 (5) --->     6 (-5)
-    ///           /              /  \
-    ///          8 (-3)      3 (-3)  8 (2)
-    ///
-    private func rotateLeft(_ node: Node) -> Node? {
-        guard let right = node.right else {  return node }
-        let rleft = right.left
-        let right_key = node._key + right._key + node._data.count
-        let node_key = node._key - right_key
-        if let rl = rleft {
-            rl._key = (right._key + rl._key)
-            if rl._key < 0 {
-                // TODO: Throw or fatalError
-                fatalError("Tree key is corrupted")
-            }
-        }
-        right._key = right_key
-        node._key = node_key
-        if node._key >= 0 {
-            // TODO: Throw or fatalError
-            fatalError("Tree key is corrupted")
-        }
-        
-        node.right = rleft
-        right.left = node
-        return right
-    }
-    ///
-    ///
     ///
     func allocate() -> DataAllocator.Storage {
         guard let allocator = _allocator else { fatalError("Allocator is nil") }
         return allocator.createStore(capacity: _maxElementsPerNode)
     }
-    ///
-    ///
     ///
     private func addNode(for position: Int, starting node: Node?, data: DataAllocator.Storage.Element, runningSum: Int) -> Node? {
         guard let node = node else {
@@ -227,47 +158,6 @@ where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, D
         return balanceNode(node, position, curInsertRange.hr)
     }
     ///
-    ///
-    func balanceNode(_ node: Node,_ position: Int, _ insertRange: HRange) -> Node? {
-        let balance = node.balance
-        
-        // Left Left Case
-        if let left = node.left {
-            if balance > 1 && position < left.getFindRange(insertRange.startIndex) {
-                return rotateRight(node);
-            }
-        }
-        // Right Right Case
-        if let right = node.right {
-            if balance < -1 && position > right.getFindRange(insertRange.startIndex) {
-                return rotateLeft(node)
-            }
-        }
-        
-        // Left Right Case
-        if let left = node.left {
-            if balance > 1 && position > left.getFindRange(insertRange.startIndex) {
-                node.left = rotateLeft(left);
-                return rotateRight(node);
-            }
-        }
-        
-        // Right Left Case
-        if let right = node.right {
-            if (balance < -1 && position < right.getFindRange(insertRange.endIndex)) {
-                node.right = rotateRight(right);
-                return rotateLeft(node);
-            }
-        }
-        
-        return node
-    }
-    ///
-    public func add(data: DataAllocator.Storage.Element, at position: Int) {
-        root = addNode(for: position, starting: root, data: data, runningSum: 0)
-        _count += 1
-    }
-    ///
     func removeElement(at position: Int, starting node: Node?, runningSum: Int) -> Node? {
         guard let node = node else { return nil }
         let findRange = node.getFindRange(runningSum)
@@ -285,17 +175,12 @@ where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, D
         } else {
             guard node.remove(at: position - findRange.startIndex) else { fatalError("Unable to remove data at: \(position)") }
             guard node._data.count == 0 else { return node }
-            if node === root {
+            if node === _root {
                 return node.combineChildren(as: .AsRight)
             }
             return node
         }
         return balanceNode(node, position, findRange)
-    }
-    ///
-    func remove(at position: Int) {
-        root = removeElement(at: position, starting: root, runningSum: 0)
-        _count -= 1
     }
     ///
     func _traverseInOrder(_ node: Node, _ runningSum: Int, _ depth: Int, _ block:(Node,Int,Int)->Void) {
@@ -317,7 +202,7 @@ where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, D
         block(node, findRange.startIndex, depth)
     }
     public func traverse(style: TraverseStyle,_ block:(Node,Int,Int)->Void) {
-        guard let root = root else { return }
+        guard let root = _root else { return }
         switch style {
         case .InOrder: _traverseInOrder(root, 0, 0, block)
         case .PreOrder: _traversePreOrder(root, 0, 0, block)
@@ -325,8 +210,48 @@ where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, D
         }
     }
     public var height: Int { //}(Int,Int) {
-        guard let root = root else { return 0 }
+        guard let root = _root else { return 0 }
         return root.height
     }
 }
 
+extension HArray {
+    public subscript(position: Int) -> DataAllocator.Storage.Element {
+        get {
+            return getData(at: position)!
+        }
+        set(newValue) {
+            guard let root = _root else { fatalError("Invalid position") }
+            let r = _findNode(for: position, starting: root, runningSum: 0)
+            guard r.1 else { fatalError("Invalid position") }
+            guard (r.2.startIndex..<r.2.endIndex).contains(position) else { fatalError("Invalid position") /*TODO: This should throw...dohhhh */}
+            guard let node = r.0 else { fatalError("Invalid position") }
+            node._data[position - r.2.startIndex] = newValue
+        }
+    }
+    public func append(_ element: DataAllocator.Storage.Element) {
+        add(data: element, at: count)
+    }
+    public func insert(_ element: DataAllocator.Storage.Element, at position: Int) {
+        add(data: element, at: position)
+    }
+    ///
+    func getData(at position: Int) -> DataAllocator.Storage.Element? {
+        guard let root = _root else { return nil }
+        let r = _findNode(for: position, starting: root, runningSum: 0)
+        guard r.1 else { return nil }
+        guard (r.2.startIndex..<r.2.endIndex).contains(position) else { return nil /*TODO: This should throw...dohhhh */}
+        guard let node = r.0 else { return nil }
+        return node._data[position - r.2.startIndex]
+    }
+    ///
+    func remove(at position: Int) {
+        _root = removeElement(at: position, starting: _root, runningSum: 0)
+        _count -= 1
+    }
+    ///
+    func add(data: DataAllocator.Storage.Element, at position: Int) {
+        _root = addNode(for: position, starting: _root, data: data, runningSum: 0)
+        _count += 1
+    }
+}
