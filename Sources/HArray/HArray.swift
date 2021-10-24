@@ -108,18 +108,17 @@ where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, D
         guard let node = node else {
             var storage = allocate()
             storage.append(data)
-            return Node(key: 0, //position - runningSum,
+            return Node(key: 0, 
                         height: 1,
                         data: storage,
-                        maxCount: _maxElementsPerNode,
                         left: nil,
                         right: nil)
         }
-        let curInsertRange = node.getInsertRange(runningSum)
+        let curInsertRange = node.getFindRange(runningSum)
         
-        if position > curInsertRange {
+        if position > curInsertRange.endIndex {
             node.rightUpdateAdd = addNode(for: position, starting: node.right, data:data, runningSum: curInsertRange.endIndex )
-        } else if position < curInsertRange {
+        } else if position < curInsertRange.startIndex {
             node.leftUpdateAdd = addNode(for: position, starting: node.left, data:data, runningSum: curInsertRange.startIndex)
         } else {
             // Update the current node.
@@ -139,7 +138,6 @@ where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, D
                     let splitRight = Node(key: 0,
                                           height: (node.right != nil) ? node.right!._height+1: 1,
                                           data: storage,
-                                          maxCount: _maxElementsPerNode,
                                           left: nil,
                                           right: node.right)
                     node.right = splitRight
@@ -147,7 +145,7 @@ where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, D
                     // The current node was split into two, but the data was not yet added.
                     // Recurse using the current node, the data will find its position since there is enough space.
                     if let n = addNode(for: position, starting: node, data:data, runningSum: runningSum) {
-                        return balanceNode(n, position, curInsertRange.hr)
+                        return balanceNode(n, position, curInsertRange)
                     }
                     return nil // fatalError ???
                 }
@@ -155,7 +153,7 @@ where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, D
             return node
         }
         
-        return balanceNode(node, position, curInsertRange.hr)
+        return balanceNode(node, position, curInsertRange)
     }
     ///
     func removeElement(at position: Int, starting node: Node?, runningSum: Int) -> Node? {

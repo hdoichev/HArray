@@ -14,6 +14,7 @@ public protocol StorableAllocator {
 }
 ///
 public protocol Storable: MutableCollection, Codable  {
+    var capacity: Int { get }
     mutating func replace(with elements: [Element])
     mutating func append(_ elements: [Element])
     mutating func append(_ element: Element)

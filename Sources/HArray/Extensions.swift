@@ -10,13 +10,19 @@ import Foundation
 extension Array: StorableAllocator where Array.Element: Codable {
     public typealias Storage = Array
     public func createStore(capacity: Int) -> Array<Element> {
-        return Array()
+        var a = Array()
+        a.reserveCapacity(capacity)
+        return a
     }
 }
 ///
 extension Array: Storable where Array.Element: Codable {
     public mutating func replace(with elements: [Element]) {
-        self = elements
+        var a = Array()
+        a.reserveCapacity(self.capacity)
+        a += elements
+        self = a
+//        print("self.capacity: ", self.capacity)
     }
     public mutating func append(_ elements: [Element]) {
         self += elements

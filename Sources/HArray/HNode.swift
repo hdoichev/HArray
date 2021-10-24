@@ -49,18 +49,16 @@ public class HNode<DataAllocator: StorableAllocator>: Codable where DataAllocato
     var _right: HNode?
     var _height: Int = 1
     var _data: DataAllocator.Storage
-    let _maxCount: Int
     
     enum CombineOutput {
         case AsLeft, AsRight
     }
-    public init(key: Int, height: Int, data: DataAllocator.Storage, maxCount: Int = 1, left: HNode? = nil, right: HNode? = nil) {
+    public init(key: Int, height: Int, data: DataAllocator.Storage, left: HNode? = nil, right: HNode? = nil) {
         self._key = key
         self._left = left
         self._right = right
         self._height = height
         self._data = data
-        self._maxCount = maxCount >= data.count ? maxCount: data.count
     }
 }
 /// Memeber variables
@@ -133,7 +131,7 @@ extension HNode {
 
 extension HNode {
     func canInsertData(at position: Int) -> Bool {
-        guard position >= 0 && position <= _data.count && _data.count < _maxCount else { return false}
+        guard position >= 0 && position <= _data.count && _data.count < _data.capacity else { return false}
         return true
     }
     func insert(data: DataAllocator.Storage.Element, at position: Int) -> Bool {
@@ -152,13 +150,9 @@ extension HNode {
         if _key < 0 { _key += 1}
         return true
     }
-    func getInsertRange(_ position: Int) -> HInsertRange {
-        return HInsertRange(HRange(startIndex: position + _key,
-                                   endIndex: position + _key + _data.count,
-                                   maxIndex: position + _key + _maxCount))
-    }
     func getFindRange(_ position: Int) -> HRange {
-        return HRange(startIndex: position + _key, endIndex: position + _key + _data.count, maxIndex: position + _key + _maxCount)
+        return HRange(startIndex: position + _key,
+                      endIndex: position + _key + _data.count)
     }
     ///
     var leftKey: Int {
