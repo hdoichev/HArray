@@ -13,7 +13,7 @@ import XCTest
 //    var v: Int
 //}
 typealias TestData = Int
-typealias HTestArray = HArray<TestData>
+typealias HTestArray = HArray<Array<TestData>>
 typealias T = HTestArray.Node
 
 fileprivate func insertAndVerify(data: TestData, at position: Int, in tree: HTestArray){
@@ -53,12 +53,9 @@ fileprivate func verifyTreeOrder(_ tree: HTestArray, printTree: Bool = false) {
 ///
 fileprivate func createNode(forRange: Range<Int>, position: Int, with capacity: Int, isRight: Bool) -> (T?,Int/*height*/,Int/*key*/) {
     guard forRange.count > 0 else { return (nil, 0, 0) }
-    //    guard forRange.count > capacity * 3 else { return createNode(forRange: forRange, with: capacity-1, isRight: isRight) }
     var leftRange = (0..<0)
     var rightRange = (forRange.count..<forRange.count)
-    if forRange.count < capacity {
-        //        leftRange = (0..<forRange.count-capacity)
-    } else {
+    if forRange.count >= capacity {
         let lrange = (forRange.count - capacity) / 2
         let rrange = forRange.count - capacity - lrange
         leftRange = (forRange.startIndex..<forRange.startIndex+lrange)// forRange.prefix((forRange.count - capacity) / 2)
@@ -77,7 +74,7 @@ fileprivate func createNode(forRange: Range<Int>, position: Int, with capacity: 
     return (node, height, key)
 }
 fileprivate func constructTree(elements count: Int, capacityPerNode: Int) -> HTestArray {
-    let tree = HTestArray(maxElementsPerNode: capacityPerNode)
+    let tree = HTestArray(maxElementsPerNode: capacityPerNode, allocator: Array<Int>())
     let r = createNode(forRange: (0..<count), position: (count + 1) / 2, with: capacityPerNode, isRight: true)
     tree.root = r.0
     tree._count = count
@@ -93,12 +90,12 @@ final class HTreeTests: XCTestCase {
     ///                     2
     ///
     func testAddBeforeLast() {
-        let tree = HTestArray(maxElementsPerNode: 1)
+        let tree = HTestArray(maxElementsPerNode: 1, allocator: Array<Int>())
         tree.root = T(key: 0, height: 2, data: [1],
                       right: T(key: 0, height: 1, data: [2]))
         
         verifyTreeOrder(tree)
-        //        tree.traverse(style: .InOrder) { if !($0._data.isEmpty)  {print("(\($1))", String(repeating: "  ", count: 5 - $0._height), $0._key, $0._data/*, $0.height*/)} }
+//        tree.traverse(style: .InOrder) { if !($0._data.isEmpty)  {print("(\($1))", String(repeating: "  ", count: 5 - $0._height), $0._key, $0._data/*, $0.height*/)} }
         //        print("----------")
         insertAndVerify(data: 20, at: 2, in: tree)
         tree.traverse(style: .InOrder) { if !($0._data.isEmpty) {print("(\($1))", String(repeating: "  ", count: $2), $0._key, $0._data/*, $0.height*/)} }
@@ -114,7 +111,7 @@ final class HTreeTests: XCTestCase {
     ///                                3
     ///
     func testAddBeforeBeforeLast() {
-        let tree = HTestArray(maxElementsPerNode: 1)
+        let tree = HTestArray(maxElementsPerNode: 1, allocator: Array<Int>())
         tree.root = T(key: 0, height: 3, data: [1],
                       right: T(key: 0, height: 2, data: [2],
                                right: T(key: 0, height: 1, data: [3])))
@@ -138,7 +135,7 @@ final class HTreeTests: XCTestCase {
     ///                                   [5,6]
     ///
     func testAddBeforeBeforeLast_Multi() {
-        let tree = HTestArray(maxElementsPerNode: 2)
+        let tree = HTestArray(maxElementsPerNode: 2, allocator: Array<Int>())
         tree.root = T(key: 0, height: 3, data: [1,2],
                       right: T(key: 0, height: 2, data: [3,4],
                                right: T(key: 0, height: 1, data: [5,6])))
@@ -160,7 +157,7 @@ final class HTreeTests: XCTestCase {
     ///      \                       \
     ///       [3]                     [3]
     func testInsertData() {
-        let tree = HTestArray(maxElementsPerNode: 2)
+        let tree = HTestArray(maxElementsPerNode: 2, allocator: Array<Int>())
         tree.root = T(key: 1, height: 3, data: [1], maxCount: 2,
                       right: T(key: 0, height: 2, data: [2], maxCount: 2,
                                right: T(key: 0, height: 1, data: [3], maxCount: 2)))
@@ -180,7 +177,7 @@ final class HTreeTests: XCTestCase {
         //        }
     }
     func testAddFirst() {
-        let tree = HTestArray(maxElementsPerNode: 2)
+        let tree = HTestArray(maxElementsPerNode: 2, allocator: Array<Int>())
         tree.root = T(key: 1, height: 2, data: [1], maxCount: 2,
                       left: T(key: -1, height: 1, data: [0], maxCount: 2))
         
@@ -191,7 +188,7 @@ final class HTreeTests: XCTestCase {
         print("----------")
     }
     func testAddBeforeFirst() {
-        let tree = HTestArray(maxElementsPerNode: 2)
+        let tree = HTestArray(maxElementsPerNode: 2, allocator: Array<Int>())
         tree.root = T(key: 2, height: 3, data: [2],
                       left: T(key: -1, height: 2, data: [1], maxCount: 2,
                               left: T(key: -1, height: 1, data: [0], maxCount: 2)))
@@ -212,7 +209,7 @@ final class HTreeTests: XCTestCase {
     ///                          1
     ///
     func testAddInnerBeforeBeforeLast_Left() {
-        let tree = HTestArray(maxElementsPerNode: 2)
+        let tree = HTestArray(maxElementsPerNode: 2, allocator: Array<Int>())
         tree.root = T(key: 2, height: 3, data: [2], maxCount: 2,
                       left: T(key: -2, height: 2, data: [0], maxCount: 2,
                               right: T(key: 0, height: 1, data: [1], maxCount: 2)))
@@ -231,7 +228,7 @@ final class HTreeTests: XCTestCase {
     ///     1 (here)               [20,1] (*)
     ///
     func testAddInnerBeforeBeforeLast_Right() {
-        let tree = HTestArray(maxElementsPerNode: 2)
+        let tree = HTestArray(maxElementsPerNode: 2, allocator: Array<Int>())
         tree.root = T(key: 0, height: 3, data: [0], maxCount: 2,
                       right: T(key: 1, height: 2, data: [2], maxCount: 2,
                                left: T(key: -1, height: 1, data: [1], maxCount: 2)))
@@ -247,7 +244,7 @@ final class HTreeTests: XCTestCase {
     ///
     ///
     func testAdd_Left() {
-        let tree = HTestArray(maxElementsPerNode: 2)
+        let tree = HTestArray(maxElementsPerNode: 2, allocator: Array<Int>())
         tree.root = T(key: 0, height: 2, data: [4,5], maxCount: 2,
                       right: T(key: 0, height: 1, data: [6,7], maxCount: 2))
         var h = tree.height
@@ -267,7 +264,7 @@ final class HTreeTests: XCTestCase {
     ///
     ///
     func testAddAtRandomPositions() {
-        let tree = HTestArray(maxElementsPerNode: 5)
+        let tree = HTestArray(maxElementsPerNode: 5, allocator: Array<Int>())
         for i in 0..<777 { tree.add(data: i, at: i)}
         //        print("Height: ", tree.height)
         //        print("InOrder:")
@@ -301,12 +298,12 @@ final class HTreeTests: XCTestCase {
         //        print("----------")
     }
     func testAddAtRandomPositions_Rverse() {
-        let tree = HTestArray(maxElementsPerNode: 5)
+        let tree = HTestArray(maxElementsPerNode: 5, allocator: Array<Int>())
         for i in (0..<777).reversed() { tree.add(data: i, at: i)}
         verifyTreeOrder(tree)
     }
     func testBalanceRotateRight() {
-        let tree = HTestArray(maxElementsPerNode: 1)
+        let tree = HTestArray(maxElementsPerNode: 1, allocator: Array<Int>())
         tree.root = T(key: 4, height: 5, data: [4],
                       left: T(key: -1, height: 4, data: [3],
                               left: T(key: -1, height: 3, data: [2],
@@ -316,7 +313,7 @@ final class HTreeTests: XCTestCase {
         verifyTreeOrder(tree)
     }
     func testBalanceRotateRight_2() {
-        let tree = HTestArray(maxElementsPerNode: 2)
+        let tree = HTestArray(maxElementsPerNode: 2, allocator: Array<Int>())
         tree.root = T(key: 8, height: 5, data: [8,9], maxCount: 2,
                       left: T(key: -2, height: 4, data: [6,7], maxCount: 2,
                               left: T(key: -2, height: 3, data: [4,5], maxCount: 2,
@@ -326,7 +323,7 @@ final class HTreeTests: XCTestCase {
         verifyTreeOrder(tree)
     }
     func testAdd_Insertions_Performance() {
-        let tree = HTestArray(maxElementsPerNode: 20)
+        let tree = HTestArray(maxElementsPerNode: 20, allocator: Array<Int>())
         for i in 0..<10 {
             tree.add(data: i, at: i)
         }
@@ -339,14 +336,14 @@ final class HTreeTests: XCTestCase {
     }
     func testAdd_Performance_5() {
         measure {
-            let tree = HTestArray(maxElementsPerNode: 5)
+            let tree = HTestArray(maxElementsPerNode: 5, allocator: Array<Int>())
             for i in 0..<100_000 { insertAndVerify(data: i, at: i, in: tree) }
         }
         //        verifyTreeOrder(tree)
     }
     ///
     func testRemove_1() {
-        let tree = HTestArray()
+        let tree = HTestArray(allocator: Array<Int>())
         tree.root = T(key: 1, height: 2, data: [0],
                       left: T(key: -1, height: 1, data: [0]))
         
@@ -427,7 +424,7 @@ final class HTreeTests: XCTestCase {
     }
     ///
     func testStoreToJSON() {
-        let tree = HTestArray(maxElementsPerNode: 1024)
+        let tree = HTestArray(maxElementsPerNode: 1024, allocator: Array<Int>())
         for i in 0..<1_000_000 {
             // insertAndVerify(data: i, at: i, in: tree) }
             tree.add(data: i, at: i)

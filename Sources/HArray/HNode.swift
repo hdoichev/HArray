@@ -8,7 +8,7 @@
 import Foundation
 
 ///
-public class HNode<DataType:Codable>: Codable {
+public class HNode<DataAllocator: StorableAllocator>: Codable where DataAllocator.Storage: Storable & Codable & MutableCollection {
     /// This is maain piece of information that is required to travers (find, add, remove) elements.
     /// It value is handled automatically and is not intended for external usage.
     ///
@@ -48,13 +48,13 @@ public class HNode<DataType:Codable>: Codable {
     var _left: HNode?
     var _right: HNode?
     var _height: Int = 1
-    var _data: [DataType]
+    var _data: DataAllocator.Storage
     let _maxCount: Int
     
     enum CombineOutput {
         case AsLeft, AsRight
     }
-    public init(key: Int, height: Int, data: [DataType], maxCount: Int = 1, left: HNode? = nil, right: HNode? = nil) {
+    public init(key: Int, height: Int, data: DataAllocator.Storage, maxCount: Int = 1, left: HNode? = nil, right: HNode? = nil) {
         self._key = key
         self._left = left
         self._right = right
@@ -66,7 +66,7 @@ public class HNode<DataType:Codable>: Codable {
 /// Memeber variables
 extension HNode {
     public var key: Int { _key }
-    public var data: [DataType] { _data }
+    public var data: DataAllocator.Storage { _data }
     public var height: Int { 1 + Swift.max((left?._height) ?? 0, (right?._height) ?? 0) }
     var isLeaf: Bool { right == nil && left == nil }
     var balance: Int { (left?._height ?? 0) - (right?._height ?? 0) }
@@ -108,7 +108,7 @@ extension HNode {
                 if _key < 0 {
                     _key -= 1
                 }
-                //                if right!._key == 0 { right!._key = 1 }
+//                if right!._key == 0 { right!._key = 1 }
             }
         }
         get {
@@ -136,7 +136,7 @@ extension HNode {
         guard position >= 0 && position <= _data.count && _data.count < _maxCount else { return false}
         return true
     }
-    func insert(data: DataType, at position: Int) -> Bool {
+    func insert(data: DataAllocator.Storage.Element, at position: Int) -> Bool {
         guard canInsertData(at: position) else { return false }
         _data.insert(data, at: position)
         // Inserting data item into the current node, has the same semantics as adding a right node.
@@ -159,12 +159,6 @@ extension HNode {
     }
     func getFindRange(_ position: Int) -> HRange {
         return HRange(startIndex: position + _key, endIndex: position + _key + _data.count, maxIndex: position + _key + _maxCount)
-    }
-    func rightBound(_ curPosition: Int) -> Int {
-        return curPosition + _key + _data.count
-    }
-    func leftBound(_ curPosition: Int) -> Int {
-        return curPosition - _key
     }
     ///
     var leftKey: Int {

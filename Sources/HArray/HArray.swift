@@ -6,67 +6,12 @@
 //
 
 import Foundation
-
-struct HRange: Codable {
-    var startIndex: Int // position for the first element
-    var endIndex: Int // position directly after the last available element
-    var maxIndex: Int // position directly after the maximum element index
-    // add offset to the range
-    static func +(_ lhs: HRange, _ offset: Int) -> HRange {
-        return HRange(startIndex: lhs.startIndex + offset, endIndex: lhs.endIndex + offset, maxIndex: lhs.maxIndex)
-    }
-    //
-    // If the endIndex < maxIndex then an item can be inserted with range (startIndex - 1...endIndex)
-    //
-    static func <(_ lhs: HRange, _ position: Int) -> Bool {
-        return lhs.endIndex <= position
-    }
-    static func >(_ lhs: HRange, _ position: Int) -> Bool {
-        return (position < lhs)
-    }
-    static func <(_ position: Int, _ rhs: HRange) -> Bool {
-        return position < rhs.startIndex
-    }
-    static func >(_ position: Int, _ rhs: HRange) -> Bool {
-        return (rhs < position)
-    }
-}
-struct HInsertRange: Codable {
-    var hr: HRange
-    var hasFreeSpace: Bool { hr.endIndex < hr.maxIndex }
-    var startIndex: Int { hr.startIndex }
-    var endIndex: Int { hr.endIndex }
-    //
-    init(_ hr: HRange) {
-        self.hr = hr
-    }
-    // add offset to the range
-    static func +(_ lhs: HInsertRange, _ offset: Int) -> HInsertRange {
-        return HInsertRange(HRange(startIndex: lhs.hr.startIndex + offset,
-                                   endIndex: lhs.hr.endIndex + offset,
-                                   maxIndex: lhs.hr.maxIndex))
-    }
-    static func <(_ lhs: HInsertRange, _ position: Int) -> Bool {
-        if lhs.hr.endIndex != lhs.hr.maxIndex {
-            return lhs.hr.endIndex < position
-        }
-        return lhs.hr.endIndex <= position
-    }
-    static func >(_ lhs: HInsertRange, _ position: Int) -> Bool {
-        return (position < lhs)
-    }
-    static func <(_ position: Int, _ rhs: HInsertRange) -> Bool {
-        return position < rhs.startIndex
-    }
-    static func>(_ position: Int, _ rhs: HInsertRange) -> Bool{
-        return (rhs < position)
-    }
-}
+/// Array intended for usage where fast insertion and removal of items in the middle of the array is of importance.
 ///
 ///
-///
-public class HArray<DataType: Codable>: Codable{
-    public typealias Node = HNode<DataType>
+public class HArray<DataAllocator: StorableAllocator>: Codable
+where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, DataAllocator.Storage.Index == Int {
+    public typealias Node = HNode<DataAllocator>
     public enum TraverseStyle {
         case InOrder
         case PreOrder
@@ -75,15 +20,43 @@ public class HArray<DataType: Codable>: Codable{
     var root: Node?
     let _maxElementsPerNode: Int
     var _count: Int = 0
+    var _allocator: DataAllocator?
     
-    public var count: Int { _count }
+    enum CodingKeys: String, CodingKey {
+        case root
+        case maxElementsPerNode
+        case count
+    }
+    ///  The _allocator would not be restored from the decoded data and this must be explicitly
+    ///  set after this init return.
+    public required init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        root = try values.decode(Node.self, forKey: .root)
+        _maxElementsPerNode = try values.decode(Int.self, forKey: .maxElementsPerNode)
+        _count = try values.decode(Int.self, forKey: .count)
+        _allocator = nil
+    }
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(root, forKey: .root)
+        try container.encode(_maxElementsPerNode, forKey: .maxElementsPerNode)
+        try container.encode(_count, forKey: .count)
+    }
     ///
-    public init(maxElementsPerNode: Int = 32) {
+    public var count: Int { _count }
+    public var allocator: DataAllocator? {
+        get { _allocator }
+        set { _allocator = newValue }
+    }
+    ///
+    public init(maxElementsPerNode: Int = 32, allocator: DataAllocator) {
+        _allocator = allocator
         root = nil
         _maxElementsPerNode = maxElementsPerNode
     }
     ///
-    func _visitNodes(for position: Int, current curNode: Node, parent parentNode: Node, runningSum: Int, visitor:(Node/*current*/, Node/*parent*/, Bool/*found*/)->Void) {
+    func _visitNodes(for position: Int, current curNode: Node, parent parentNode: Node, runningSum: Int,
+                     visitor:(Node/*current*/, Node/*parent*/, Bool/*found*/)->Void) {
         let curRange = curNode.getFindRange(runningSum)
         if position > curRange {
             if curNode.right == nil { return }
@@ -115,7 +88,7 @@ public class HArray<DataType: Codable>: Codable{
     ///
     ///
     ///
-    public func getData(at position: Int) -> DataType? {
+    public func getData(at position: Int) -> DataAllocator.Storage.Element? {
         guard let root = root else { return nil }
         let r = _findNode(for: position, starting: root, runningSum: 0)
         guard r.1 else { return nil }
@@ -193,11 +166,20 @@ public class HArray<DataType: Codable>: Codable{
     ///
     ///
     ///
-    private func addNode(for position: Int, starting node: Node?, data: DataType, runningSum: Int) -> Node? {
+    func allocate() -> DataAllocator.Storage {
+        guard let allocator = _allocator else { fatalError("Allocator is nil") }
+        return allocator.createStore(capacity: _maxElementsPerNode)
+    }
+    ///
+    ///
+    ///
+    private func addNode(for position: Int, starting node: Node?, data: DataAllocator.Storage.Element, runningSum: Int) -> Node? {
         guard let node = node else {
+            var storage = allocate()
+            storage.append(data)
             return Node(key: 0, //position - runningSum,
                         height: 1,
-                        data: [data],
+                        data: storage,
                         maxCount: _maxElementsPerNode,
                         left: nil,
                         right: nil)
@@ -220,15 +202,17 @@ public class HArray<DataType: Codable>: Codable{
                 } else if position == curInsertRange.endIndex {
                     node.rightUpdateAdd = addNode(for: position, starting: node.right, data:data, runningSum: curInsertRange.endIndex)
                 } else {
+                    var storage = allocate()
+                    storage.append(Array(node._data[(node._data.count/2..<node._data.count)]))
                     // split the current node
                     let splitRight = Node(key: 0,
                                           height: (node.right != nil) ? node.right!._height+1: 1,
-                                          data: Array(node._data[(node._data.count/2..<node._data.count)]),
+                                          data: storage,
                                           maxCount: _maxElementsPerNode,
                                           left: nil,
                                           right: node.right)
                     node.right = splitRight
-                    node._data = Array(node._data[0..<node._data.count/2])
+                    node._data.replace(with: Array(node._data[0..<node._data.count/2]))
                     // The current node was split into two, but the data was not yet added.
                     // Recurse using the current node, the data will find its position since there is enough space.
                     if let n = addNode(for: position, starting: node, data:data, runningSum: runningSum) {
@@ -279,7 +263,7 @@ public class HArray<DataType: Codable>: Codable{
         return node
     }
     ///
-    public func add(data: DataType, at position: Int) {
+    public func add(data: DataAllocator.Storage.Element, at position: Int) {
         root = addNode(for: position, starting: root, data: data, runningSum: 0)
         _count += 1
     }
