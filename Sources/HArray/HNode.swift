@@ -8,8 +8,8 @@
 import Foundation
 
 ///
-public class HNode<DataAllocator: StorableAllocator>: Codable where DataAllocator.Storage: Storable & Codable & MutableCollection {
-    /// This is maain piece of information that is required to travers (find, add, remove) elements.
+public class HNode<DataAllocator: StorableAllocator>: Codable where DataAllocator.Storage: Storable {
+    /// This is main piece of information that is required to travers (find, add, remove) elements.
     /// It value is handled automatically and is not intended for external usage.
     ///
     ///     _key in terms of an array
