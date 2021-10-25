@@ -385,7 +385,7 @@ final class HTreeTests: XCTestCase {
     }
     ///
     func testRemove_Performance() {
-        let tree = constructTree(elements: 1_000_000, capacityPerNode: 3)
+        let tree = constructTree(elements: 100_000, capacityPerNode: 3)
         measure {
             let half = tree.count/2
             for i in half-500..<half+500 {
@@ -395,9 +395,25 @@ final class HTreeTests: XCTestCase {
         verifyTreeOrder(tree)
     }
     ///
+    func testValues() {
+        let a = HTestArray(maxElementsPerNode: 256, allocator: Array<Int>())
+        for i in 0..<100_000 { a.append(i) }
+        let reduced = a.reduce(0, +)
+        XCTAssertEqual(reduced, 4999950000)
+    }
+    ///
+    func testValues_Performance() {
+        let a = HTestArray(maxElementsPerNode: 256, allocator: Array<Int>())
+        for i in 0..<100_000 { a.append(i) }
+        measure {
+            let reduced = a.reduce(0, +)
+            XCTAssertEqual(reduced, 4999950000)
+        }
+    }
+    ///
     func testStoreToJSON() {
-        let tree = HTestArray(maxElementsPerNode: 1024, allocator: Array<Int>())
-        for i in 0..<1_000_000 {
+        let tree = HTestArray(maxElementsPerNode: 256, allocator: Array<Int>())
+        for i in 0..<100_000 {
             // insertAndVerify(data: i, at: i, in: tree) }
             tree.insert(i, at: i)
         }

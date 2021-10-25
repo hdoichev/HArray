@@ -53,6 +53,26 @@ public class HNode<DataAllocator: StorableAllocator>: Codable where DataAllocato
     enum CombineOutput {
         case AsLeft, AsRight
     }
+    enum CodingKeys: String, CodingKey {
+        case k, l, r, h, d
+    }
+    public required init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        _key = try values.decode(Int.self, forKey: .k)
+        _left = try? values.decode(HNode.self, forKey: .l)
+        _right = try? values.decode(HNode.self, forKey: .r)
+        _height = try values.decode(Int.self, forKey: .h)
+        _data = try values.decode(DataAllocator.Storage.self, forKey: .d)
+    }
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(_key, forKey: .k)
+        try container.encode(_left, forKey: .l)
+        try container.encode(_right, forKey: .r)
+        try container.encode(_height, forKey: .h)
+        try container.encode(_data, forKey: .d)
+    }
+
     public init(key: Int, height: Int, data: DataAllocator.Storage, left: HNode? = nil, right: HNode? = nil) {
         self._key = key
         self._left = left

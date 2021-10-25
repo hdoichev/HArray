@@ -10,7 +10,10 @@ import Foundation
 ///
 ///
 public class HArray<DataAllocator: StorableAllocator>: Codable, MutableCollection
-where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, DataAllocator.Storage.Index == Int {
+where DataAllocator.Storage: Storable,
+        DataAllocator.Storage.Element: Codable,
+        DataAllocator.Storage.Index == Int,
+        DataAllocator.Storage.Allocator == DataAllocator {
     public var startIndex: Int { return 0 }
     
     public var endIndex: Int { return _count }
@@ -29,6 +32,7 @@ where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, D
     let _maxElementsPerNode: Int
     var _count: Int = 0
     var _allocator: DataAllocator?
+    var _lastFindResult: (Node?, Bool, HRange) = (nil, false, HRange(startIndex: 0, endIndex: 0))
     
     enum CodingKeys: String, CodingKey {
         case root
@@ -54,7 +58,11 @@ where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, D
     public var count: Int { _count }
     public var allocator: DataAllocator? {
         get { _allocator }
-        set { _allocator = newValue }
+        set { _allocator = newValue
+            traverse(style: .InOrder) { hnode, startIndex, depth in
+                hnode._data.allocator = _allocator
+            }
+        }
     }
     ///
     public init(maxElementsPerNode: Int = 32, allocator: DataAllocator) {
@@ -104,10 +112,10 @@ where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, D
         return allocator.createStore(capacity: _maxElementsPerNode)
     }
     ///
-    private func addNode(for position: Int, starting node: Node?, data: DataAllocator.Storage.Element, runningSum: Int) -> Node? {
+    private func addNode(for position: Int, starting node: Node?, element: DataAllocator.Storage.Element, runningSum: Int) -> Node? {
         guard let node = node else {
             var storage = allocate()
-            storage.append(data)
+            storage.append(element)
             return Node(key: 0, 
                         height: 1,
                         data: storage,
@@ -117,20 +125,20 @@ where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, D
         let curInsertRange = node.getFindRange(runningSum)
         
         if position > curInsertRange.endIndex {
-            node.rightUpdateAdd = addNode(for: position, starting: node.right, data:data, runningSum: curInsertRange.endIndex )
+            node.rightUpdateAdd = addNode(for: position, starting: node.right, element:element, runningSum: curInsertRange.endIndex )
         } else if position < curInsertRange.startIndex {
-            node.leftUpdateAdd = addNode(for: position, starting: node.left, data:data, runningSum: curInsertRange.startIndex)
+            node.leftUpdateAdd = addNode(for: position, starting: node.left, element:element, runningSum: curInsertRange.startIndex)
         } else {
             // Update the current node.
             // If the current node can store more data then add the data to the Node and update the position offsets.
             // Otherwise add a new node and update the chain of nodes/
             // The new node becomes the left of the current, and if the current had a prior left then
             // that one become the left of the new node.
-            if node.insert(data: data, at: position - curInsertRange.startIndex) == false {
+            if node.insert(data: element, at: position - curInsertRange.startIndex) == false {
                 if position == curInsertRange.startIndex {
-                    node.leftUpdateAdd = addNode(for: position, starting: node.left, data:data, runningSum: curInsertRange.startIndex)
+                    node.leftUpdateAdd = addNode(for: position, starting: node.left, element:element, runningSum: curInsertRange.startIndex)
                 } else if position == curInsertRange.endIndex {
-                    node.rightUpdateAdd = addNode(for: position, starting: node.right, data:data, runningSum: curInsertRange.endIndex)
+                    node.rightUpdateAdd = addNode(for: position, starting: node.right, element:element, runningSum: curInsertRange.endIndex)
                 } else {
                     var storage = allocate()
                     storage.append(Array(node._data[(node._data.count/2..<node._data.count)]))
@@ -144,7 +152,7 @@ where DataAllocator.Storage: Storable, DataAllocator.Storage.Element: Codable, D
                     node._data.replace(with: Array(node._data[0..<node._data.count/2]))
                     // The current node was split into two, but the data was not yet added.
                     // Recurse using the current node, the data will find its position since there is enough space.
-                    if let n = addNode(for: position, starting: node, data:data, runningSum: runningSum) {
+                    if let n = addNode(for: position, starting: node, element:element, runningSum: runningSum) {
                         return balanceNode(n, position, curInsertRange)
                     }
                     return nil // fatalError ???
@@ -219,8 +227,14 @@ extension HArray {
             return getData(at: position)!
         }
         set(newValue) {
+//            if (_lastFindResult.2.startIndex..<_lastFindResult.2.endIndex).contains(position) &&
+//                _lastFindResult.1 && _lastFindResult.0 != nil {
+//                _lastFindResult.0!._data[position - _lastFindResult.2.startIndex] = newValue
+//            }
             guard let root = _root else { fatalError("Invalid position") }
-            let r = _findNode(for: position, starting: root, runningSum: 0)
+            _lastFindResult = _findNode(for: position, starting: root, runningSum: 0)
+            
+            let r = _lastFindResult//_findNode(for: position, starting: root, runningSum: 0)
             guard r.1 else { fatalError("Invalid position") }
             guard (r.2.startIndex..<r.2.endIndex).contains(position) else { fatalError("Invalid position") /*TODO: This should throw...dohhhh */}
             guard let node = r.0 else { fatalError("Invalid position") }
@@ -235,8 +249,13 @@ extension HArray {
     }
     ///
     func getData(at position: Int) -> DataAllocator.Storage.Element? {
+//        if (_lastFindResult.2.startIndex..<_lastFindResult.2.endIndex).contains(position) &&
+//            _lastFindResult.1 && _lastFindResult.0 != nil {
+//            return _lastFindResult.0!._data[position - _lastFindResult.2.startIndex]
+//        }
         guard let root = _root else { return nil }
-        let r = _findNode(for: position, starting: root, runningSum: 0)
+        _lastFindResult = _findNode(for: position, starting: root, runningSum: 0)
+        let r = _lastFindResult
         guard r.1 else { return nil }
         guard (r.2.startIndex..<r.2.endIndex).contains(position) else { return nil /*TODO: This should throw...dohhhh */}
         guard let node = r.0 else { return nil }
@@ -244,12 +263,14 @@ extension HArray {
     }
     ///
     func remove(at position: Int) {
+        _lastFindResult.1 = false
         _root = removeElement(at: position, starting: _root, runningSum: 0)
         _count -= 1
     }
     ///
     func add(data: DataAllocator.Storage.Element, at position: Int) {
-        _root = addNode(for: position, starting: _root, data: data, runningSum: 0)
+        _lastFindResult.1 = false
+        _root = addNode(for: position, starting: _root, element: data, runningSum: 0)
         _count += 1
     }
 }

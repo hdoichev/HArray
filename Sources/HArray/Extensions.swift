@@ -17,6 +17,13 @@ extension Array: StorableAllocator where Array.Element: Codable {
 }
 ///
 extension Array: Storable where Array.Element: Codable {
+    public typealias Allocator = Array<Element>
+    
+    public var allocator: Array<Element>? {
+        get { Array<Element>() }
+        set {}
+    }
+    
     public mutating func replace(with elements: [Element]) {
         var a = Array()
         a.reserveCapacity(self.capacity)
