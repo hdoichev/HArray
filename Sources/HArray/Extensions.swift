@@ -9,7 +9,7 @@ import Foundation
 ///
 extension Array: StorableAllocator where Array.Element: Codable {
     public typealias Storage = Array
-    public func createStore(capacity: Int) -> Array<Element> {
+    public func createStore(capacity: Int) -> Array<Element>? {
         var a = Array()
         a.reserveCapacity(capacity)
         return a
@@ -17,7 +17,7 @@ extension Array: StorableAllocator where Array.Element: Codable {
 }
 ///
 extension Array: Storable where Array.Element: Codable {
-    public typealias Allocator = Array<Element>
+    public typealias StorageAllocator = Array<Element>
     
     public var allocator: Array<Element>? {
         get { Array<Element>() }

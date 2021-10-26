@@ -6,6 +6,11 @@
 //
 
 import Foundation
+
+enum HArrayErrors: Error {
+    case AllocationFailed
+}
+
 /// Array intended for usage where fast insertion and removal of items in the middle of the array is of importance.
 ///
 ///
@@ -13,7 +18,7 @@ public class HArray<DataAllocator: StorableAllocator>: Codable, MutableCollectio
 where DataAllocator.Storage: Storable,
         DataAllocator.Storage.Element: Codable,
         DataAllocator.Storage.Index == Int,
-        DataAllocator.Storage.Allocator == DataAllocator {
+        DataAllocator.Storage.StorageAllocator == DataAllocator {
     public var startIndex: Int { return 0 }
     
     public var endIndex: Int { return _count }
@@ -107,14 +112,15 @@ where DataAllocator.Storage: Storable,
         return _findNode(for: position, starting: root, runningSum: 0).0
     }
     ///
-    func allocate() -> DataAllocator.Storage {
+    func allocate() throws -> DataAllocator.Storage {
         guard let allocator = _allocator else { fatalError("Allocator is nil") }
-        return allocator.createStore(capacity: _maxElementsPerNode)
+        guard let store = allocator.createStore(capacity: _maxElementsPerNode) else { throw HArrayErrors.AllocationFailed}
+        return store
     }
     ///
     private func addNode(for position: Int, starting node: Node?, element: DataAllocator.Storage.Element, runningSum: Int) -> Node? {
         guard let node = node else {
-            var storage = allocate()
+            guard var storage = try? allocate() else { return nil }
             storage.append(element)
             return Node(key: 0, 
                         height: 1,
@@ -140,7 +146,7 @@ where DataAllocator.Storage: Storable,
                 } else if position == curInsertRange.endIndex {
                     node.rightUpdateAdd = addNode(for: position, starting: node.right, element:element, runningSum: curInsertRange.endIndex)
                 } else {
-                    var storage = allocate()
+                    guard var storage = try? allocate() else { return nil /** TODO: Is this the best way to go??? */}
                     storage.append(Array(node._data[(node._data.count/2..<node._data.count)]))
                     // split the current node
                     let splitRight = Node(key: 0,
@@ -164,29 +170,29 @@ where DataAllocator.Storage: Storable,
         return balanceNode(node, position, curInsertRange)
     }
     ///
-    func removeElement(at position: Int, starting node: Node?, runningSum: Int) -> Node? {
-        guard let node = node else { return nil }
+    func removeElement(at position: Int, starting node: Node?, runningSum: Int) -> (Element,Node?) {
+        guard let node = node else { fatalError("Invalid object") }
         let findRange = node.getFindRange(runningSum)
-        
+        var element: Element
         if position > findRange {
-            node.rightUpdateRemove = removeElement(at: position, starting: node.right, runningSum: findRange.endIndex)
+            (element, node.rightUpdateRemove) = removeElement(at: position, starting: node.right, runningSum: findRange.endIndex)
             if node.right?._data.count == 0 {
                 node.right = node.right!.combineChildren(as: .AsRight)
             }
         } else if position < findRange {
-            node.leftUpdateRemove = removeElement(at: position, starting: node.left, runningSum: findRange.startIndex)
+            (element, node.leftUpdateRemove) = removeElement(at: position, starting: node.left, runningSum: findRange.startIndex)
             if node.left?._data.count == 0 {
                 node.left = node.left!.combineChildren(as: .AsLeft)
             }
         } else {
-            guard node.remove(at: position - findRange.startIndex) else { fatalError("Unable to remove data at: \(position)") }
-            guard node._data.count == 0 else { return node }
+            let e = node.remove(at: position - findRange.startIndex) //else { fatalError("Unable to remove data at: \(position)") }
+            guard node._data.count == 0 else { return (e, node) }
             if node === _root {
-                return node.combineChildren(as: .AsRight)
+                return (e, node.combineChildren(as: .AsRight))
             }
-            return node
+            return (e, node)
         }
-        return balanceNode(node, position, findRange)
+        return (element, balanceNode(node, position, findRange))
     }
     ///
     func _traverseInOrder(_ node: Node, _ runningSum: Int, _ depth: Int, _ block:(Node,Int,Int)->Void) {
@@ -262,14 +268,16 @@ extension HArray {
         return node._data[position - r.2.startIndex]
     }
     ///
-    func remove(at position: Int) {
-        _lastFindResult.1 = false
-        _root = removeElement(at: position, starting: _root, runningSum: 0)
+    public func remove(at position: Int) -> Element {
+//        _lastFindResult.1 = false
+        let e: Element
+        (e, _root) = removeElement(at: position, starting: _root, runningSum: 0)
         _count -= 1
+        return e
     }
     ///
     func add(data: DataAllocator.Storage.Element, at position: Int) {
-        _lastFindResult.1 = false
+//        _lastFindResult.1 = false
         _root = addNode(for: position, starting: _root, element: data, runningSum: 0)
         _count += 1
     }

@@ -10,13 +10,13 @@ import Foundation
 ///
 public protocol StorableAllocator {
     associatedtype Storage
-    func createStore(capacity: Int) -> Storage
+    func createStore(capacity: Int) -> Storage?
 }
 ///
 public protocol Storable: MutableCollection, Codable  {
-    associatedtype Allocator
+    associatedtype StorageAllocator
     var capacity: Int { get }
-    var allocator: Allocator? { get set }
+    var allocator: StorageAllocator? { get set }
     mutating func replace(with elements: [Element])
     mutating func append(_ elements: [Element])
     mutating func append(_ element: Element)

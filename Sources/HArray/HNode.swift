@@ -164,11 +164,10 @@ extension HNode {
         }
         return true
     }
-    func remove(at position: Int) -> Bool {
-        guard (0..<_data.count).contains(position) else { return false }
-        _data.remove(at: position)
+    func remove(at position: Int) -> DataAllocator.Storage.Element  {
+        guard (0..<_data.count).contains(position) else { fatalError("Invalid Position") }
         if _key < 0 { _key += 1}
-        return true
+        return _data.remove(at: position)
     }
     func getFindRange(_ position: Int) -> HRange {
         return HRange(startIndex: position + _key,
