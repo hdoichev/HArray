@@ -22,4 +22,6 @@ public protocol Storable: MutableCollection, Codable  {
     mutating func append(_ element: Element)
     mutating func insert(_ element: Element, at position: Int)
     mutating func remove(at: Int) -> Element
+    /// Object is no longer used by HArray.
+    mutating func notInUse()
 }

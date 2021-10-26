@@ -204,6 +204,7 @@ extension HNode {
     }
     ///
     func combineChildren(as outputDirection: CombineOutput) -> HNode? {
+        _data.notInUse()
         // Time to remove this node.right
         if let right = right {
             right.appendLeft(left)

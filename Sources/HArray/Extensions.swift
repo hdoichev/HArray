@@ -34,4 +34,7 @@ extension Array: Storable where Array.Element: Codable {
     public mutating func append(_ elements: [Element]) {
         self += elements
     }
+    public mutating func notInUse() {
+        self.removeAll()
+    }
 }
