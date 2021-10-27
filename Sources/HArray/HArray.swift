@@ -48,7 +48,7 @@ where DataAllocator.Storage: Storable,
     ///  set after this init return.
     public required init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
-        _root = try values.decode(Node.self, forKey: .root)
+        _root = try? values.decode(Node.self, forKey: .root)
         _maxElementsPerNode = try values.decode(Int.self, forKey: .maxElementsPerNode)
         _count = try values.decode(Int.self, forKey: .count)
         _allocator = nil
