@@ -164,7 +164,7 @@ where DataAllocator.Storage: Storable,
                     return nil // fatalError ???
                 }
             }
-            return node
+            return balanceNode(node, position, curInsertRange)
         }
         
         return balanceNode(node, position, curInsertRange)
