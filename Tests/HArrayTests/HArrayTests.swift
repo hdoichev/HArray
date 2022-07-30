@@ -97,7 +97,7 @@ final class HTreeTests: XCTestCase {
         verifyTreeOrder(tree)
 //        tree.traverse(style: .InOrder) { if !($0._data.isEmpty)  {print("(\($1))", String(repeating: "  ", count: 5 - $0._height), $0._key, $0._data/*, $0.height*/)} }
         //        print("----------")
-        insertAndVerify(data: 20, at: 2, in: tree)
+        insertAndVerify(data: 20, at: 1, in: tree)
         tree.traverse(style: .InOrder) { if !($0._data.isEmpty) {print("(\($1))", String(repeating: "  ", count: $2), $0._key, $0._data/*, $0.height*/)} }
         print("----------")
     }
@@ -118,7 +118,7 @@ final class HTreeTests: XCTestCase {
         
         tree.traverse(style: .InOrder) { if !($0._data.isEmpty) {print("(\($1))", String(repeating: "  ", count: $2), $0._key, $0._data/*, $0.height*/)} }
         print("----------")
-        insertAndVerify(data: 20, at: 2, in: tree)
+        insertAndVerify(data: 20, at: 1, in: tree)
         tree.traverse(style: .InOrder) { if !($0._data.isEmpty) {print("(\($1))", String(repeating: "  ", count: $2), $0._key, $0._data/*, $0.height*/)} }
         print("----------")
         //        if let jd = try? JSONEncoder().encode(tree) {

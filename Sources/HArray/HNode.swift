@@ -8,7 +8,7 @@
 import Foundation
 
 ///
-public class HNode<DataAllocator: StorableAllocator>: Codable where DataAllocator.Storage: Storable {
+public final class HNode<DataAllocator: StorableAllocator>: Codable where DataAllocator.Storage: Storable {
     /// This is main piece of information that is required to travers (find, add, remove) elements.
     /// It value is handled automatically and is not intended for external usage.
     ///
@@ -25,7 +25,7 @@ public class HNode<DataAllocator: StorableAllocator>: Codable where DataAllocato
     ///
     ///             A:2
     ///           /    \
-    ///        B:-2     C:0
+    ///        B:-2     D:0
     ///           \
     ///             C:0
     ///  "A:2" means that there are 2 elements before A - that is the chain of element starting with A.left
@@ -44,11 +44,11 @@ public class HNode<DataAllocator: StorableAllocator>: Codable where DataAllocato
     ///     _key < 0 when going left: parent.startIndex - node.startIndex
     ///     _key >= 0 when going right: node.startIndex - parent.endIndex
     ///
-    var _key: Int = 0
-    var _left: HNode?
-    var _right: HNode?
-    var _height: Int = 1
-    var _data: DataAllocator.Storage
+    final var _key: Int = 0
+    final var _left: HNode?
+    final var _right: HNode?
+    final var _height: Int = 1
+    final var _data: DataAllocator.Storage
     
     enum CombineOutput {
         case AsLeft, AsRight
@@ -64,7 +64,7 @@ public class HNode<DataAllocator: StorableAllocator>: Codable where DataAllocato
         _height = try values.decode(Int.self, forKey: .h)
         _data = try values.decode(DataAllocator.Storage.self, forKey: .d)
     }
-    public func encode(to encoder: Encoder) throws {
+    public final func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(_key, forKey: .k)
         try container.encode(_left, forKey: .l)
@@ -83,20 +83,20 @@ public class HNode<DataAllocator: StorableAllocator>: Codable where DataAllocato
 }
 /// Memeber variables
 extension HNode {
-    public var key: Int { _key }
-    public var data: DataAllocator.Storage { _data }
-    public var height: Int { 1 + Swift.max((left?._height) ?? 0, (right?._height) ?? 0) }
-    var isLeaf: Bool { right == nil && left == nil }
-    var balance: Int { (left?._height ?? 0) - (right?._height ?? 0) }
+    public final var key: Int { _key }
+    public final var data: DataAllocator.Storage { _data }
+    public final var height: Int { 1 + Swift.max((left?._height) ?? 0, (right?._height) ?? 0) }
+    final var isLeaf: Bool { right == nil && left == nil }
+    final var balance: Int { (left?._height ?? 0) - (right?._height ?? 0) }
     ///
-    var left: HNode? {
+    final var left: HNode? {
         set {
             _left = newValue
             _height = height
         }
         get { _left }
     }
-    var right: HNode? {
+    final var right: HNode? {
         set {
             _right = newValue
             _height = height
@@ -104,7 +104,7 @@ extension HNode {
         get { _right }
     }
     /// Update the left node and keep track of how many elements are on that path.
-    var leftUpdateAdd: HNode? {
+    final var leftUpdateAdd: HNode? {
         set {
             left = newValue
             if left != nil {
@@ -119,7 +119,7 @@ extension HNode {
         }
     }
     /// Update the left node and keep track of how many elements are on that path.
-    var rightUpdateAdd: HNode? {
+    final var rightUpdateAdd: HNode? {
         set {
             right = newValue
             if right != nil {
@@ -133,14 +133,14 @@ extension HNode {
             return right
         }
     }
-    var leftUpdateRemove: HNode? {
+    final var leftUpdateRemove: HNode? {
         set {
             if left != nil && _key > 0 { _key -= 1 }
             left = newValue
         }
         get { left }
     }
-    var rightUpdateRemove: HNode? {
+    final var rightUpdateRemove: HNode? {
         set {
             if right != nil && _key < 0 { _key += 1}
             right = newValue
@@ -150,11 +150,11 @@ extension HNode {
 }
 
 extension HNode {
-    func canInsertData(at position: Int) -> Bool {
+    final func canInsertData(at position: Int) -> Bool {
         guard position >= 0 && position <= _data.count && _data.count < _data.capacity else { return false}
         return true
     }
-    func insert(data: DataAllocator.Storage.Element, at position: Int) -> Bool {
+    final func insert(data: DataAllocator.Storage.Element, at position: Int) -> Bool {
         guard canInsertData(at: position) else { return false }
         _data.insert(data, at: position)
         // Inserting data item into the current node, has the same semantics as adding a right node.
@@ -164,27 +164,27 @@ extension HNode {
         }
         return true
     }
-    func remove(at position: Int) -> DataAllocator.Storage.Element  {
+    final func remove(at position: Int) -> DataAllocator.Storage.Element  {
         guard (0..<_data.count).contains(position) else { fatalError("Invalid Position") }
         if _key < 0 { _key += 1}
         return _data.remove(at: position)
     }
-    func getFindRange(_ position: Int) -> HRange {
+    final func getFindRange(_ position: Int) -> HRange {
         return HRange(startIndex: position + _key,
                       endIndex: position + _key + _data.count)
     }
     ///
-    var leftKey: Int {
+    final var leftKey: Int {
         return -(_key + _data.count) + (right?.leftKey ?? 0)
     }
-    var rightKey: Int {
+    final var rightKey: Int {
         return (left?.rightKey ?? 0) - _key
     }
 }
 /// 
 extension HNode {
     ///
-    func appendLeft(_ node: HNode? ) {
+    final func appendLeft(_ node: HNode? ) {
         guard let node = node else { return }
         if self.left != nil {
             self.left!.appendLeft(node)
@@ -193,7 +193,7 @@ extension HNode {
             self.left = node
         }
     }
-    func appendRight(_ node: HNode? ) {
+    final func appendRight(_ node: HNode? ) {
         guard let node = node else { return }
         if self.right != nil {
             self.right!.appendRight(node)
@@ -203,7 +203,7 @@ extension HNode {
         }
     }
     ///
-    func combineChildren(as outputDirection: CombineOutput) -> HNode? {
+    final func combineChildren(as outputDirection: CombineOutput) -> HNode? {
         _data.notInUse()
         // Time to remove this node.right
         if let right = right {

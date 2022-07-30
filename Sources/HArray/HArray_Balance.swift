@@ -15,7 +15,7 @@ extension HArray {
     ///     \                            /   \
     ///     4 (1)                    4 (-2)   8 (2)
     ///
-    private func rotateRight(_ node: Node) -> Node? {
+    private final func rotateRight(_ node: Node) -> Node? {
         guard let left = node.left else { return node }
         let lright = left.right
         let left_key = node._key + left._key
@@ -45,7 +45,7 @@ extension HArray {
     ///           /              /  \
     ///          8 (-3)      3 (-3)  8 (2)
     ///
-    private func rotateLeft(_ node: Node) -> Node? {
+    private final func rotateLeft(_ node: Node) -> Node? {
         guard let right = node.right else {  return node }
         let rleft = right.left
         let right_key = node._key + right._key + node._data.count
@@ -69,8 +69,7 @@ extension HArray {
         return right
     }
     ///
-    ///
-    func balanceNode(_ node: Node,_ position: Int, _ insertRange: HRange) -> Node? {
+    final func balanceNode(_ node: Node,_ position: Int, _ insertRange: HRange) -> Node? {
         let balance = node.balance
         
         // Left Left Case
@@ -85,7 +84,6 @@ extension HArray {
                 return rotateLeft(node)
             }
         }
-        
         // Left Right Case
         if let left = node.left {
             if balance > 1 && position > left.getFindRange(insertRange.startIndex) {
@@ -93,7 +91,6 @@ extension HArray {
                 return rotateRight(node);
             }
         }
-        
         // Right Left Case
         if let right = node.right {
             if (balance < -1 && position < right.getFindRange(insertRange.endIndex)) {
@@ -101,7 +98,6 @@ extension HArray {
                 return rotateLeft(node);
             }
         }
-        
         return node
     }
 

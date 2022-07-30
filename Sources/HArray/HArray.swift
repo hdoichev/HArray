@@ -14,18 +14,18 @@ enum HArrayErrors: Error {
 /// Array intended for usage where fast insertion and removal of items in the middle of the array is of importance.
 ///
 ///
-public class HArray<DataAllocator: StorableAllocator>: Codable, MutableCollection
+public final class HArray<DataAllocator: StorableAllocator>: Codable, MutableCollection
 where DataAllocator.Storage: Storable,
         DataAllocator.Storage.Element: Codable,
         DataAllocator.Storage.Index == Int,
         DataAllocator.Storage.StorageAllocator == DataAllocator {
-    public var startIndex: Int { return 0 }
+    public final var startIndex: Int { return 0 }
     
-    public var endIndex: Int { return _count }
+    public final var endIndex: Int { return _count }
     
     public typealias Element = DataAllocator.Storage.Element
     public typealias Index = Int
-    public func index(after i: Int) -> Int { return i + 1 }
+    public final func index(after i: Int) -> Int { return i + 1 }
     
     public typealias Node = HNode<DataAllocator>
     public enum TraverseStyle {
@@ -33,11 +33,10 @@ where DataAllocator.Storage: Storable,
         case PreOrder
         case PostOrder
     }
-    var _root: Node?
-    let _maxElementsPerNode: Int
-    var _count: Int = 0
-    var _allocator: DataAllocator?
-    var _lastFindResult: (Node?, Bool, HRange) = (nil, false, HRange(startIndex: 0, endIndex: 0))
+    final var _root: Node?
+    final let _maxElementsPerNode: Int
+    final var _count: Int = 0
+    final var _allocator: DataAllocator?
     
     enum CodingKeys: String, CodingKey {
         case root
@@ -53,15 +52,15 @@ where DataAllocator.Storage: Storable,
         _count = try values.decode(Int.self, forKey: .count)
         _allocator = nil
     }
-    public func encode(to encoder: Encoder) throws {
+    public final func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(_root, forKey: .root)
         try container.encode(_maxElementsPerNode, forKey: .maxElementsPerNode)
         try container.encode(_count, forKey: .count)
     }
     ///
-    public var count: Int { _count }
-    public var allocator: DataAllocator? {
+    public final var count: Int { _count }
+    public final var allocator: DataAllocator? {
         get { _allocator }
         set { _allocator = newValue
             traverse(style: .InOrder) { hnode, startIndex, depth in
@@ -76,7 +75,7 @@ where DataAllocator.Storage: Storable,
         _maxElementsPerNode = maxElementsPerNode
     }
     ///
-    func _visitNodes(for position: Int, current curNode: Node, parent parentNode: Node, runningSum: Int,
+    final func _visitNodes(for position: Int, current curNode: Node, parent parentNode: Node, runningSum: Int,
                      visitor:(Node/*current*/, Node/*parent*/, Bool/*found*/)->Void) {
         let curRange = curNode.getFindRange(runningSum)
         if position > curRange {
@@ -94,7 +93,7 @@ where DataAllocator.Storage: Storable,
         }
     }
     ///
-    func _findNode(for position: Int, starting node: Node, runningSum: Int) -> (Node?, Bool, HRange) {
+    final func _findNode(for position: Int, starting node: Node, runningSum: Int) -> (Node?, Bool, HRange) {
         let findRange = node.getFindRange(runningSum)
         if position > findRange {
             if node.right == nil { return (node, false, findRange) }
@@ -107,18 +106,18 @@ where DataAllocator.Storage: Storable,
         }
     }
     ///
-    public func findNode(for position: Int) -> Node? {
+    public final func findNode(for position: Int) -> Node? {
         guard let root = _root else { return nil }
         return _findNode(for: position, starting: root, runningSum: 0).0
     }
     ///
-    func allocate() throws -> DataAllocator.Storage {
+    final func allocate() throws -> DataAllocator.Storage {
         guard let allocator = _allocator else { fatalError("Allocator is nil") }
         guard let store = allocator.createStore(capacity: _maxElementsPerNode) else { throw HArrayErrors.AllocationFailed}
         return store
     }
     ///
-    private func addNode(for position: Int, starting node: Node?, element: DataAllocator.Storage.Element, runningSum: Int) -> Node? {
+    private final func addNode(for position: Int, starting node: Node?, element: DataAllocator.Storage.Element, runningSum: Int) -> Node? {
         guard let node = node else {
             guard var storage = try? allocate() else { return nil }
             storage.append(element)
@@ -170,7 +169,7 @@ where DataAllocator.Storage: Storable,
         return balanceNode(node, position, curInsertRange)
     }
     ///
-    func removeElement(at position: Int, starting node: Node?, runningSum: Int) -> (Element,Node?) {
+    final func removeElement(at position: Int, starting node: Node?, runningSum: Int) -> (Element,Node?) {
         guard let node = node else { fatalError("Invalid object") }
         let findRange = node.getFindRange(runningSum)
         var element: Element
@@ -195,25 +194,25 @@ where DataAllocator.Storage: Storable,
         return (element, balanceNode(node, position, findRange))
     }
     ///
-    func _traverseInOrder(_ node: Node, _ runningSum: Int, _ depth: Int, _ block:(Node,Int,Int)->Void) {
+    final func _traverseInOrder(_ node: Node, _ runningSum: Int, _ depth: Int, _ block:(Node,Int,Int)->Void) {
         let findRange = node.getFindRange(runningSum)
         if let left = node.left { _traverseInOrder(left, findRange.startIndex, depth + 1, block) }
         block(node, findRange.startIndex, depth)
         if let right = node.right { _traverseInOrder(right, findRange.endIndex, depth + 1, block) }
     }
-    func _traversePreOrder(_ node: Node, _ runningSum: Int, _ depth: Int, _ block:(Node,Int,Int)->Void) {
+    final func _traversePreOrder(_ node: Node, _ runningSum: Int, _ depth: Int, _ block:(Node,Int,Int)->Void) {
         let findRange = node.getFindRange(runningSum)
         block(node, findRange.startIndex, depth)
         if let left = node.left { _traversePreOrder(left, findRange.startIndex, depth + 1, block) }
         if let right = node.right { _traversePreOrder(right, findRange.endIndex, depth + 1, block) }
     }
-    func _traversePostOrder(_ node: Node, _ runningSum: Int, _ depth: Int, _ block:(Node,Int,Int)->Void) {
+    final func _traversePostOrder(_ node: Node, _ runningSum: Int, _ depth: Int, _ block:(Node,Int,Int)->Void) {
         let findRange = node.getFindRange(runningSum)
         if let left = node.left { _traversePostOrder(left, findRange.startIndex, depth + 1, block) }
         if let right = node.right { _traversePostOrder(right, findRange.endIndex, depth + 1, block) }
         block(node, findRange.startIndex, depth)
     }
-    public func traverse(style: TraverseStyle,_ block:(Node,Int,Int)->Void) {
+    public final func traverse(style: TraverseStyle, _ block:(Node,Int,Int)->Void) {
         guard let root = _root else { return }
         switch style {
         case .InOrder: _traverseInOrder(root, 0, 0, block)
@@ -221,63 +220,50 @@ where DataAllocator.Storage: Storable,
         case .PostOrder: _traversePostOrder(root, 0, 0, block)
         }
     }
-    public var height: Int { //}(Int,Int) {
+    public final var height: Int { //}(Int,Int) {
         guard let root = _root else { return 0 }
         return root.height
     }
 }
 
 extension HArray {
-    public subscript(position: Int) -> DataAllocator.Storage.Element {
+    public final subscript(position: Int) -> DataAllocator.Storage.Element {
         get {
             return getData(at: position)!
         }
         set(newValue) {
-//            if (_lastFindResult.2.startIndex..<_lastFindResult.2.endIndex).contains(position) &&
-//                _lastFindResult.1 && _lastFindResult.0 != nil {
-//                _lastFindResult.0!._data[position - _lastFindResult.2.startIndex] = newValue
-//            }
             guard let root = _root else { fatalError("Invalid position") }
-            _lastFindResult = _findNode(for: position, starting: root, runningSum: 0)
-            
-            let r = _lastFindResult//_findNode(for: position, starting: root, runningSum: 0)
+            let r = _findNode(for: position, starting: root, runningSum: 0)
             guard r.1 else { fatalError("Invalid position") }
-            guard (r.2.startIndex..<r.2.endIndex).contains(position) else { fatalError("Invalid position") /*TODO: This should throw...dohhhh */}
+//            guard (r.2.startIndex..<r.2.endIndex).contains(position) else { fatalError("Invalid position") /*TODO: This should throw...dohhhh */}
             guard let node = r.0 else { fatalError("Invalid position") }
             node._data[position - r.2.startIndex] = newValue
         }
     }
-    public func append(_ element: DataAllocator.Storage.Element) {
-        add(data: element, at: count)
+    public final func append(_ element: DataAllocator.Storage.Element) {
+        _insert(data: element, at: count)
     }
-    public func insert(_ element: DataAllocator.Storage.Element, at position: Int) {
-        add(data: element, at: position)
+    public final func insert(_ element: DataAllocator.Storage.Element, at position: Int) {
+        _insert(data: element, at: position)
     }
     ///
-    func getData(at position: Int) -> DataAllocator.Storage.Element? {
-//        if (_lastFindResult.2.startIndex..<_lastFindResult.2.endIndex).contains(position) &&
-//            _lastFindResult.1 && _lastFindResult.0 != nil {
-//            return _lastFindResult.0!._data[position - _lastFindResult.2.startIndex]
-//        }
+    final func getData(at position: Int) -> DataAllocator.Storage.Element? {
         guard let root = _root else { return nil }
-        _lastFindResult = _findNode(for: position, starting: root, runningSum: 0)
-        let r = _lastFindResult
+        let r = _findNode(for: position, starting: root, runningSum: 0)
         guard r.1 else { return nil }
-        guard (r.2.startIndex..<r.2.endIndex).contains(position) else { return nil /*TODO: This should throw...dohhhh */}
+//        guard (r.2.startIndex..<r.2.endIndex).contains(position) else { return nil /*TODO: This should throw...dohhhh */}
         guard let node = r.0 else { return nil }
         return node._data[position - r.2.startIndex]
     }
     ///
-    public func remove(at position: Int) -> Element {
-//        _lastFindResult.1 = false
+    public final func remove(at position: Int) -> Element {
         let e: Element
         (e, _root) = removeElement(at: position, starting: _root, runningSum: 0)
         _count -= 1
         return e
     }
     ///
-    func add(data: DataAllocator.Storage.Element, at position: Int) {
-//        _lastFindResult.1 = false
+    final func _insert(data: DataAllocator.Storage.Element, at position: Int) {
         _root = addNode(for: position, starting: _root, element: data, runningSum: 0)
         _count += 1
     }

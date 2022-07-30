@@ -18,12 +18,12 @@ extension Array: StorableAllocator where Array.Element: Codable {
 ///
 extension Array: Storable where Array.Element: Codable {
     public typealias StorageAllocator = Array<Element>
-    
+    ///
     public var allocator: Array<Element>? {
         get { Array<Element>() }
         set {}
     }
-    
+    ///
     public mutating func replace(with elements: [Element]) {
         var a = Array()
         a.reserveCapacity(self.capacity)
@@ -31,9 +31,11 @@ extension Array: Storable where Array.Element: Codable {
         self = a
 //        print("self.capacity: ", self.capacity)
     }
+    ///
     public mutating func append(_ elements: [Element]) {
         self += elements
     }
+    ///
     public mutating func notInUse() {
         self.removeAll()
     }
