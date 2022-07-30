@@ -79,13 +79,13 @@ where DataAllocator.Storage: Storable,
                      visitor:(Node/*current*/, Node/*parent*/, Bool/*found*/)->Void) {
         let curRange = curNode.getFindRange(runningSum)
         if position > curRange {
-            if curNode.right == nil { return }
-            _visitNodes(for: position, current: curNode.right!, parent: curNode, runningSum: curRange.endIndex, visitor: visitor)
+            guard let rightNode = curNode.right else { return }
+            _visitNodes(for: position, current: rightNode, parent: curNode, runningSum: curRange.endIndex, visitor: visitor)
             visitor(curNode, parentNode, false)
             return
         } else if position < curRange {
-            if curNode.left == nil { return }
-            _visitNodes(for: position, current: curNode.left!, parent: curNode, runningSum: curRange.startIndex, visitor: visitor)
+            guard let leftNode = curNode.left else { return }
+            _visitNodes(for: position, current: leftNode, parent: curNode, runningSum: curRange.startIndex, visitor: visitor)
             visitor(curNode, parentNode, false)
             return
         } else {
@@ -96,11 +96,11 @@ where DataAllocator.Storage: Storable,
     final func _findNode(for position: Int, starting node: Node, runningSum: Int) -> (Node?, Bool, HRange) {
         let findRange = node.getFindRange(runningSum)
         if position > findRange {
-            if node.right == nil { return (node, false, findRange) }
-            return _findNode(for: position, starting: node.right!, runningSum: findRange.endIndex)
+            guard let rightNode = node.right else { return (node, false, findRange) }
+            return _findNode(for: position, starting: rightNode, runningSum: findRange.endIndex)
         } else if position < findRange {
-            if node.left == nil { return (node, false, findRange) }
-            return _findNode(for: position, starting: node.left!, runningSum: findRange.startIndex /*- node._key*/)
+            guard let leftNode = node.left else { return (node, false, findRange) }
+            return _findNode(for: position, starting: leftNode, runningSum: findRange.startIndex /*- node._key*/)
         } else {
             return (node, true, findRange)
         }
